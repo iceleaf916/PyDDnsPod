@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-# coding=utf-8
+# -*- coding: utf-8 -*-
 
-import urllib
-import urllib2
 import os
-import json
 import datetime
-import threading
 import sys
+import time
+from dnspodapi import DnspodApi
 
-VERSION = "0.4"
+VERSION = "0.5"
 
 # config file
 conf_dir = os.path.dirname(__file__)
@@ -20,37 +18,18 @@ user = ''
 password = ''
 domain_name = ''
 sub_domain = ''
-record_value = ''
-user_id = ''
-domain_id = ''
-record_id =''
 record_line = "默认"
-second = 600 
-
-# Pyddns's user agent
+seconds = 600
 user_agent = 'PyDDNSPod/' + VERSION +' (iceleaf916@gmail.com)'
 headers = { 'User-Agent' : user_agent }
 
-# request urls
-api_ver_url = 'https://dnsapi.cn/Info.Version'
-user_info_url = 'https://dnsapi.cn/User.Info'
-domain_list_url = 'https://dnsapi.cn/Domain.List'
-domain_info_url = 'https://dnsapi.cn/Domain.Info'
-record_type_url = 'https://dnsapi.cn/Record.Type'
-record_line_url = 'https://dnsapi.cn/Record.Line'
-record_list_url = 'https://dnsapi.cn/Record.List'
-update_record_dns = "https://dnsapi.cn/Record.Ddns"
-
 def readConf(fileopen):
-    global user, password, domain_name, sub_domain, record_value
-    # read config file
+    global user, password, domain_name, sub_domain, seconds, record_line
     try:
         fp = open(fileopen, 'r')
     except IOError:
-        # use default parameters
-        print 'cannt open the config file, use default parameters'
-        return
-    
+        errors = 'cannt open the config file, use default parameters'
+        sys.exit(0)
     c = fp.readlines()
     for line in c:
         line = line.strip()
@@ -71,182 +50,91 @@ def readConf(fileopen):
             elif name == 'sub_domain':
                 sub_domain = value
             elif name == 'time':
-                second = float(value)
+                seconds = float(value)
             elif name == 'record_line':
                 record_line = value
     fp.close()
     return
 
-def getAPIVer():
-    data = urllib.urlencode(values)
-    ver_req = urllib2.Request(api_ver_url, data, headers)
-    try:
-        response = urllib2.urlopen(ver_req)
-    except Exception, e:
-        print e
-        print "Oops! There is a problem with the network!"
-        sys.exit(0)
-    js = response.read()
-    return json.loads(js)
+class DdnsUpdate():
+    '''update dynamic DNS record thread'''
 
-def getUserInfo():
-    data = urllib.urlencode(values)
-    user_info_req = urllib2.Request(user_info_url, data, headers)
-    try:
-        response = urllib2.urlopen(user_info_req)
-    except Exception, e:
-        print e
-        print "Oops! There is a problem with the network!"
-        sys.exit(0)
-    js = response.read()
-    return json.loads(js)
-
-def getDomainList():
-    temp_values = values.copy()
-    temp_values['type'] = 'mine'
-    temp_values['offset'] = '0'
-    temp_values['length'] = '20'
-    data = urllib.urlencode(temp_values)
-    domain_list_req = urllib2.Request(domain_list_url, data, headers)
-    try:
-        response = urllib2.urlopen(domain_list_req)
-    except Exception, e:
-        print e
-        print "Oops! There is a problem with the network!"
-        sys.exit(0)
-    js = response.read()
-    return json.loads(js)
-
-def getRecordList(domain_id):
-    temp_values = values.copy()
-    temp_values['domain_id'] = domain_id
-    temp_values['offset'] = '0'
-    temp_values['length'] = '20'
-    data = urllib.urlencode(temp_values)
-    record_list_req = urllib2.Request(record_list_url, data, headers)
-    try:
-        response = urllib2.urlopen(record_list_req)
-    except Exception, e:
-        print e
-        print "Oops! There is a problem with the network!"
-        sys.exit(0)
-    js = response.read()
-    return json.loads(js)
-
-def updateRecordDns(domain_id, record_id):
-    temp_values = values.copy()
-    temp_values['domain_id'] = domain_id
-    temp_values['record_id'] = record_id
-    temp_values['sub_domain'] = sub_domain
-    temp_values['record_line'] = record_line
-    data = urllib.urlencode(temp_values)
-    update_record_dns_req = urllib2.Request(update_record_dns, data, headers)
-    try:
-        response = urllib2.urlopen(update_record_dns_req)
-    except Exception, e:
-        print e
-        print "Oops! There is a problem with the network!"
-        sys.exit(0)
-    js = response.read()
-    return json.loads(js)
-
-def ddnsUpdate():
-    api_ver = getAPIVer()
-    if api_ver.get('status').get('code') == '1':
-        print 'Getting API version : ' + api_ver.get('status').get('message')
-    else:
-        print 'Error : Fail to get API version!'
-        print 'Error Code : ' + api_ver.get('status').get('code')
-        print 'Error Message : '+ api_ver.get('status').get('message')
-        print ''
-        return
-
-    user_info = getUserInfo()
-    if user_info.get('status').get('code') == '1':
-        print 'Getting user info : ' + user_info.get('user').get('email')
-    else:
-        print 'Error : Fail to get user info!'
-        print 'Error Code : ' + user_info.get('status').get('code')
-        print 'Error Message : '+ user_info.get('status').get('message')
-        print ''
-        return
-
-    domain_list = getDomainList()
-    if domain_list.get('status').get('code') == '1':
-        print 'Getting domain list ...'
-    else:
-        print 'Error : Fail to get domain list!'
-        print 'Error Code : ' + domain_list.get('status').get('code')
-        print 'Error Message : '+ domain_list.get('status').get('message')
-        return
-
-    # get domain's id
-    for x in domain_list.get('domains'):
-        if x.get('name') == domain_name:
-            domain_id = x.get('id')
-            print 'OK. Domain name \"' + domain_name + '\" \'s ' + 'id is ' + str(domain_id) + '.'
-            break
-    else:
-        print ''
-        print 'Error : Domain name \"' + domain_name + '\" not found! Please check for your config file.'
-        return
+    def __init__(self):
+        global user, password, headers
+        self.dnspodapi_obj = DnspodApi(headers, user, password)
     
-    record_list = getRecordList(domain_id)
-    if record_list.get('status').get('code') == '1':
-        print 'Getting record list ...'
-    else:
-        print 'Error : Fail to get record list!'
-        print 'Error Code : ' + record_list.get('status').get('code')
-        print 'Error Message : '+ record_list.get('status').get('message')
-        return
-    # get record's id
-    for x in record_list.get('records'):
-        if x.get('name') == sub_domain:
-            record_id = x.get('id')
-            print 'OK. Sub domain \"' + sub_domain + '\" \'s ' + 'record id is ' + str(record_id) + '.'
-            break
-    else:
-        record_id == ''
-        print 'Sub domain \"' + sub_domain + '\" not found.'
+    def get_domain_id(self, domain):
+        domain_id_dict = {}
+        domain_list = self.dnspodapi_obj.getDomainList()
+        if domain_list:
+            if domain_list.get('status').get('code') == '1':
+                for x in domain_list.get('domains'):
+                    domain_id_dict[x.get('name')] = x.get('id')
+                domain_id = domain_id_dict.get(domain)
+                return domain_id
+            else:
+                print 'Error : Fail to get domain list!'
+                print 'Error Code : ' + domain_list.get('status').get('code')
+                print 'Error Message : '+ domain_list.get('status').get('message')
+        return False
+    
+    def get_record_id(self, domain_id, sub_domain):
+        record_id_dict = {}
+        record_list = self.dnspodapi_obj.getRecordList(domain_id)
+        if record_list:
+            if record_list.get('status').get('code') == '1':
+                for x in record_list.get('records'):
+                    record_id_dict[x.get('name')] = x.get('id')
+                record_id = record_id_dict.get(sub_domain)
+                return record_id
+            else:
+                print 'Error : Fail to get record list!'
+                print 'Error Code : ' + domain_list.get('status').get('code')
+                print 'Error Message : '+ domain_list.get('status').get('message')
+        return False
+    
+    def get_ids(self, domain, sub_domain):
+        domain_id = self.get_domain_id(domain)
+        if domain_id:
+            print "domain_id: " + str(domain_id)
+            record_id = self.get_record_id(domain_id, sub_domain)
+            if record_id:
+                print "record_id: " + str(record_id)
+                return (domain_id, record_id)
+        return False
+        
+    def update_record_dns(self, domain_id, record_id, sub_domain, record_line):
+        return self.dnspodapi_obj.updateRecordDns(domain_id, record_id, sub_domain, record_line)
 
-    # update record dns 
-    if record_id:
-        update_record_status = updateRecordDns(domain_id,record_id)
-        if update_record_status.get("status").get("code") == '1' :
-            record_value = update_record_status.get("record").get("value")
-            now = datetime.datetime.now()
-            print "Update ip to %s at %s" % (record_value, now)
-            print "The record will be updated every %s seconds..." % second
-            
-            while 1:
-                threading._sleep(second)
-                update_record_status = updateRecordDns(domain_id, record_id)
-                result_code = str(update_record_status.get("status").get("code"))
-                if result_code != '1':
-                    error_message = update_record_status.get("status").get("message")
-                    now = datetime.datetime.now()
-                    print "Fail to update the record at %s" % now
-                    print "The error message is %s" % error_message
-                    print "Wait %s seconds, the program will try to update again..." % second
-                else:
-                    ip = update_record_status.get("record").get("value")
-                    now = datetime.datetime.now()
-                    print "update ip to %s at %s" % (ip, now)
+def update_loop(seconds):
+    global domain_name, sub_domain, record_line
+    app = DdnsUpdate()
+    ids = app.get_ids(domain_name, sub_domain)
+    while not ids:
+        print 'Something is wrong with the network'
+        time.sleep(seconds)
+        ids = app.get_ids(domain_name, sub_domain)
+    domain_id, record_id = ids
+    while 1:
+        update_result = app.update_record_dns(domain_id, record_id, sub_domain, record_line)
+        if update_result:
+            if update_result.get("status").get("code") == "1":
+                print "[%s] update %s.%s to %s successful" % (
+                    datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    sub_domain, domain_name, 
+                    update_result.get("record").get("value"),
+                )
         else:
-            print 'Error : Fail to update the record!'
-            print 'Error message : ' + update_record_status.get('status').get('message')
-    return
+            print 'Something is wrong with the network'
+        time.sleep(seconds)
     
 if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        conf_file = sys.argv[1]
     readConf(conf_file)
     print 'user:%s' %user
     print 'You want to bind the domain \"' + sub_domain + '.' + domain_name + '\" to local server!'
     print 'start...'
     
-    # reqest values
-    values = {'login_email' : user,
-              'login_password' : password,
-              'format' : 'json' }
-    
     # post request
-    ddnsUpdate()
+    update_loop(seconds)
