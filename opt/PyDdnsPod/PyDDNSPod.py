@@ -23,12 +23,23 @@ seconds = 600
 user_agent = 'PyDDNSPod/' + VERSION +' (iceleaf916@gmail.com)'
 headers = { 'User-Agent' : user_agent }
 
+def write_log(errors):
+    try:
+        f = open("/var/log/pyddnspod_error.log", "a")
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        w = "[%s] %s" % (now, errors)
+        f.write(w)
+        f.close()
+    except Exception, e:
+        pass
+
 def readConf(fileopen):
     global user, password, domain_name, sub_domain, seconds, record_line
     try:
         fp = open(fileopen, 'r')
     except IOError:
         errors = 'cannt open the config file, use default parameters'
+        print errors
         sys.exit(0)
     c = fp.readlines()
     for line in c:
@@ -111,7 +122,7 @@ def update_loop(seconds):
     app = DdnsUpdate()
     ids = app.get_ids(domain_name, sub_domain)
     while not ids:
-        print 'Something is wrong with the network'
+        print 'Something is wrong with the network, wait %s seconds to try again...' % seconds 
         time.sleep(seconds)
         ids = app.get_ids(domain_name, sub_domain)
     domain_id, record_id = ids
@@ -132,7 +143,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         conf_file = sys.argv[1]
     readConf(conf_file)
-    print 'user:%s' %user
+    print 'user:%s' % user
     print 'You want to bind the domain \"' + sub_domain + '.' + domain_name + '\" to local server!'
     print 'start...'
     
