@@ -1,0 +1,18 @@
+Source: pyddnspod
+Section: net
+Priority: optional
+Maintainer: Kaisheng Ye <iceleaf916@gmail.com>
+Build-Depends: debhelper (>= 8.0.0), python (>= 2.6.3~)
+Standards-Version: 3.9.2
+Homepage: https://github.com/iceleaf916/PyDDnsPod
+#Vcs-Git: git://git.debian.org/collab-maint/PyDDnsPod.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/PyDDnsPod.git;a=summary
+
+Package: pyddnspod
+Architecture: all
+Depends: ${misc:Depends}, python
+Description: PyDDnsPod Daemon Script
+ 此包为DDnsPod Daemon Script的安装包
+ .
+ Author's website:
+ http://www.yeezi.org

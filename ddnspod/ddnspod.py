@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 import os
@@ -7,11 +7,11 @@ import sys
 import time
 from dnspodapi import DnspodApi
 
-VERSION = "0.5"
+VERSION = "0.6"
 
 # config file
 conf_dir = os.path.dirname(__file__)
-conf_file = os.path.join(conf_dir, 'pyddnspod.conf')
+conf_file = os.path.join(conf_dir, 'ddnspod.conf')
 
 # global variables
 user = ''
